@@ -2,9 +2,12 @@
   "name": "upssh",
   "version": "1.0.0",
   "description": "Deploy an application via ssh",
-  "repository": "https://github",
+  "repository": "https://github.com/gerardnico/upssh",
   "author": "Nicolas GERARD",
   "license": "MIT",
+  "scripts": {
+    "refresh": "yarn global add file:%cd%"
+  },
   "dependencies": {
     "dotenv": "^8.2.0",
     "ignore": "^5.1.8",

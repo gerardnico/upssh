@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * This script will upload the file to the server
  * The files will be overwritten.
@@ -11,17 +13,30 @@
 
 const path = require('path');
 const fs = require('fs');
+const SftpClient = require('ssh2-sftp-client');
+const dotenv = require('dotenv')
 
 // An gitignore implementation to not upload the ignored files
-/**
- *
- * @type {{Ignore: Ignore} | ignore}
- */
+
 const ignore = require('ignore');
 const ig = ignore()
-    .add(fs.readFileSync('.gitignore').toString())
-    .add(".git")
-    .add(fs.readFileSync('.upssh-ignore').toString());
+    .add(".git");
+
+const gitIgnoreFileName = '.gitignore';
+const gitIgnoreFileExist = fs.existsSync(gitIgnoreFileName) && fs.lstatSync(gitIgnoreFileName).isFile();
+if (gitIgnoreFileExist) {
+    ig.add(fs.readFileSync(gitIgnoreFileName).toString());
+    console.log("The "+gitIgnoreFileName+" file was added")
+}
+
+const upSshIgnoreFileName = '.upssh-ignore';
+const upSshIgnoreFileNameExist = fs.existsSync(upSshIgnoreFileName) && fs.lstatSync(upSshIgnoreFileName).isFile();
+if (upSshIgnoreFileNameExist) {
+    ig.add(fs.readFileSync(upSshIgnoreFileName).toString());
+    console.log("The "+upSshIgnoreFileName+" file was added")
+} else {
+    console.log("The "+upSshIgnoreFileName+" file was not found")
+}
 
 
 async function uploadDir(rootDir, srcDir, tgtDir) {
@@ -70,29 +85,68 @@ async function uploadDir(rootDir, srcDir, tgtDir) {
 }
 
 // The upload
-const SftpClient = require('ssh2-sftp-client');
-const dotenvPath = path.join(__dirname, '.', '.env');
-require('dotenv').config({ path: dotenvPath });
+
+const dotEnvPath = path.join(__dirname, '.', '.env');
+
+const fileExists = fs.existsSync(dotEnvPath) && fs.lstatSync(dotEnvPath).isFile();
+if (fileExists) {
+    dotenv.config({path: dotEnvPath});
+} else {
+    console.warn("The file ("+dotEnvPath+") was not found")
+}
+
 const config = {
     host: process.env.UPSSH_SFTP_SERVER,
     username: process.env.UPSSH_SFTP_USER,
     password: process.env.UPSSH_SFTP_PASSWORD,
     port: process.env.UPSSH_SFTP_PORT || 22
 };
+
+if (typeof config.host == 'undefined'){
+    console.error("The environment variable (UPSSH_SFTP_SERVER) is undefined. Exiting")
+    process.exit(1);
+} else {
+    console.log("Remote host was set to "+config.host+" on port "+config.port)
+}
+
+if (typeof config.username == 'undefined'){
+    console.warning("The environment variable (UPSSH_SFTP_USER) is undefined")
+} else {
+    console.log("Remote user was set to "+config.username)
+}
+
+if (typeof config.password == 'undefined'){
+    console.warning("The environment variable (UPSSH_SFTP_PASSWORD) is undefined")
+} else {
+    console.log("A password was found")
+}
+
+
 const client = new SftpClient('upload-test');
 
-
+console.log("Trying to connect")
 client.connect(config)
     .then(async () => {
+        console.log("Connected")
         const from = path.join(__dirname, '.');
         const to = process.env.UPSSH_TARGET_PATH;
         const name = path.basename(process.env.UPSSH_TARGET_PATH)
         const toBackup = process.env.UPSSH_BACKUP_PATH + client.remotePathSep + name + '_' + (new Date()).toISOString();
+        console.log("Move the directory ("+to+") to ("+toBackup+")");
         await client.rename(to,toBackup)
+        console.log("Upload the directory ("+to+") to ("+toBackup+")");
         await uploadDir(from, from, to);
     })
-    .finally(()=> client.end())
+    .finally(()=> {
+        client.end()
+        console.log("Disconnected");
+        console.log("Bye")
+        process.exit(0);
+    })
     .catch (err => {
         console.log(`main error: ${err.message}`)
         throw new Error(err);
     });
+
+console.error("Unknown error")
+process.exit(1);
