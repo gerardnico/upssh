@@ -1,0 +1,14 @@
+{
+  "name": "upssh",
+  "version": "1.0.0",
+  "description": "Deploy an application via ssh",
+  "repository": "https://github",
+  "author": "Nicolas GERARD",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "ignore": "^5.1.8",
+    "ssh2-sftp-client": "^5.1.2"
+  },
+  "bin" : { "upssh" : "./src/upssh.js" }
+}
