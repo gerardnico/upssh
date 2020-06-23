@@ -86,7 +86,7 @@ async function uploadDir(rootDir, srcDir, tgtDir) {
 
 // The upload
 
-const dotEnvPath = path.join(__dirname, '.', '.env');
+const dotEnvPath = '.env';
 
 const fileExists = fs.existsSync(dotEnvPath) && fs.lstatSync(dotEnvPath).isFile();
 if (fileExists) {
@@ -128,13 +128,13 @@ console.log("Trying to connect")
 client.connect(config)
     .then(async () => {
         console.log("Connected")
-        const from = path.join(__dirname, '.');
+        const from = '.';
         const to = process.env.UPSSH_TARGET_PATH;
         const name = path.basename(process.env.UPSSH_TARGET_PATH)
         const toBackup = process.env.UPSSH_BACKUP_PATH + client.remotePathSep + name + '_' + (new Date()).toISOString();
         console.log("Move the directory ("+to+") to ("+toBackup+")");
         await client.rename(to,toBackup)
-        console.log("Upload the directory ("+to+") to ("+toBackup+")");
+        console.log("Upload the directory ("+from+") to ("+to+")");
         await uploadDir(from, from, to);
     })
     .finally(()=> {
@@ -147,6 +147,3 @@ client.connect(config)
         console.log(`main error: ${err.message}`)
         throw new Error(err);
     });
-
-console.error("Unknown error")
-process.exit(1);
