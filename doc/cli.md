@@ -2,16 +2,23 @@
 
 
 ## About
+This is just development documentation aimed to developers.
+
+## Bin declaration
 
   * The declaration of the command line script is done in the `bin property`
+  
      * [npm](https://docs.npmjs.com/files/package.json#bin)
      * [yarn](https://classic.yarnpkg.com/en/docs/package-json/#toc-bin)
-  * You can also a [man page](https://docs.npmjs.com/files/package.json#man)
+     
+  * You can also add a [man page](https://docs.npmjs.com/files/package.json#man)
   
   * Install it locally
 
 ```dos
 yarn global add file:%cd%
+REM or
+yarn refresh
 ``` 
 ```txt
 yarn global v1.22.4
