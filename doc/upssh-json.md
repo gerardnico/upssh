@@ -1,7 +1,7 @@
 # upssh.json
 
 # About
-`.upssh.json` is a file used to define more than one tasks.
+`upssh.json` is a file used to define more than one tasks.
 
 ## Example
 
