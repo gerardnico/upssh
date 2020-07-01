@@ -19,7 +19,7 @@
 yarn add -g upssh 
 ```
   
-  * Go to the directory to deploy
+  * Go to the project directory to deploy
 
 ```bash
 cd directory/To/Deploy
@@ -27,9 +27,21 @@ cd directory/To/Deploy
 
   * Copy the [.env.dist](.env.dist) file properties to a `.env` file 
   * Set the `UPSSH` env values correctly
+```dotenv
+UPSSH_SFTP_SERVER=hostname
+UPSSH_SFTP_USER=user
+UPSSH_SFTP_PASSWORD=pwd
+UPSSH_SFTP_PORT=22
+# If you have only one remote repository
+# otherwise you can also create a play upssh.json
+# Where the data is uploaded
+UPSSH_TARGET_PATH=/path/to/
+# Where the actual directory is moved
+UPSSH_BACKUP_PATH=/backup/path
+```
   * Add your env file in an `ignore` file (to not upload it)
+  * Optionally, use a play [upssh.json](doc/upssh-json.md) if you want to upload only subdirectories 
   * Execute `upssh`
-
 ```bash
 upssh
 ```
