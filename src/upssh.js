@@ -38,8 +38,22 @@ if (upSshIgnoreFileNameExist) {
     console.log("The "+upSshIgnoreFileName+" file was not found")
 }
 
+async function uploadDir(srcDir, tgtDir) {
+    await recursiveUploadDir(srcDir, srcDir, tgtDir)
+}
 
-async function uploadDir(rootDir, srcDir, tgtDir) {
+/**
+ * A recursive function that upload all files of a directory
+ *
+ * In the first call, `rootDir` is equal to `srcDir`
+ * Then internally for each directory, the function will call itself
+ *
+ * @param rootDir - the directory to upload
+ * @param srcDir - the local directory to upload
+ * @param tgtDir - the remote directory
+ * @return {Promise<void>}
+ */
+async function recursiveUploadDir(rootDir, srcDir, tgtDir) {
     try {
 
         // if the target directory does not exist, we create it
@@ -61,7 +75,7 @@ async function uploadDir(rootDir, srcDir, tgtDir) {
                 let relativeSrc = path.relative(rootDir, newSrcDir)
                 if (!ig.ignores(relativeSrc)) {
                     let newTgtDir = tgtDir + client.remotePathSep + dirEntry.name;
-                    await uploadDir(rootDir, newSrcDir, newTgtDir);
+                    await recursiveUploadDir(rootDir, newSrcDir, newTgtDir);
                     console.log("* process dir   : " + dirEntry.name + " (" + path.resolve(srcDir, dirEntry.name) + ")");
                 } else {
                     console.log("(uploaded dir   : " + newSrcDir + ")");
@@ -134,7 +148,29 @@ const lwd = '.';
  * the name of the current local directory
  */
 let deploymentName = path.basename(path.join(lwd));
-let tasks = [];
+
+/**
+ * The tasks to execute
+ * @type {*[]}
+ */
+let tasksToExecute = [];
+
+/**
+ * The remote working directory
+ */
+let remoteWorkingDirectory;
+
+/**
+ * The property name
+ *
+ *
+ */
+const sourcePropertyName = "source";
+const targetPropertyName = "target";
+const namePropertyName = "name";
+const backupPropertyName = "backup";
+const tasksPropertyName = "tasks";
+const remoteWorkingDirectoryPropertyName = "rwd";
 
 /**
  * If the whole current directory need to be uploaded,
@@ -153,9 +189,9 @@ if (typeof targetPath != "undefined"){
     /**
      * One task
      */
-    tasks.push({
-        "source": lwd,
-        "target": targetPath
+    tasksToExecute.push({
+        sourcePropertyName: lwd,
+        targetPropertyName: targetPath
     })
 }
 
@@ -170,46 +206,75 @@ if (typeof backup != "undefined"){
     console.log("A backup path was not found in the environment variable (UPSSH_BACKUP_PATH)")
 }
 
+
+/**
+ * Play file processing
+ * @type {string}
+ */
 let playFile =  path.join(lwd, '.', 'upssh.json');
 if (fs.existsSync(playFile) && fs.lstatSync(playFile).isFile()){
-    console.log("A play file file was found ("+playFile+')')
-    if (tasks.length>0){
+    console.log(`A play file file was found (${playFile})`)
+    if (tasksToExecute.length>0){
         console.error("You cannot run `upssh` with environment variable and a play file");
-        console.error("   * We found a target path ("+targetPath+") in the environment variable (UPSSH_TARGET_PATH)");
-        console.error("   * We found also the play file ("+playFile+")");
-        console.error("Possible solution: move your environment variable (UPSSH_TARGET_PATH) in your play file ("+playFile+")");
+        console.error(`   * We found a target path (${targetPath}) in the environment variable (UPSSH_TARGET_PATH)`);
+        console.error(`   * We found also the play file (${playFile})`);
+        console.error(`Possible solution: move your environment variable (UPSSH_TARGET_PATH) in your play file (${playFile})`);
         process.exit(1);
     }
     let playObj = JSON.parse(playFile);
-    if ("name" in playObj){
-        deploymentName = playObj["name"];
-        console.log("A deployment name was found in the play file: "+name)
+    if (playObj.hasOwnProperty(namePropertyName)){
+        deploymentName = playObj[namePropertyName];
+        console.log(`A deployment name property (${namePropertyName}) was found in the play file`)
     }
-    if ("backup" in playObj){
-        backup = playObj["backup"];
-        console.log("A backup path was found in the play file: "+backup)
+    if (playObj.hasOwnProperty(backupPropertyName)){
+        backup = playObj[backupPropertyName];
+        console.log(`A backup path was found in the play file: ${backup}`);
     }
-    if ("tasks" in playObj){
-        tasks = playObj["tasks"];
-        if (!Array.isArray(tasks)){
-            console.error("The tasks property does not define an array ("+tasks+")");
+    if (playObj.hasOwnProperty(remoteWorkingDirectoryPropertyName)){
+        remoteWorkingDirectory = playObj[remoteWorkingDirectoryPropertyName];
+        console.log(`A remote working directory was found in the play file: ${remoteWorkingDirectory}`);
+    }
+    if (playObj.hasOwnProperty(tasksPropertyName)){
+        tasksToExecute = playObj[tasksPropertyName];
+        if (!Array.isArray(tasksToExecute)){
+            console.error(`The tasks property does not define an array (${tasksToExecute})`);
             process.exit(1);
         }
-        console.log("A list of tasks was found in the play file with "+tasks.length+" tasks")
+        console.log(`A list of tasks was found in the play file with ${tasksToExecute.length} tasks`)
         /**
          * Tasks validation
          */
-        for (const [index, task] of tasks.entries()) {
-            console.log("Validating the ("+index+") tasks");
-            Object.keys(task)
-            if (!task.hasOwnProperty("source")){
-                console.error("The task ("+index+") does not have a source property");
+        for (const [index, task] of tasksToExecute.entries()) {
+            console.log(`Validating the task (${index})`);
+            let source;
+            let target;
+            if (!task.hasOwnProperty(sourcePropertyName)){
+                console.error(`The task (${index}) does not have a '${sourcePropertyName}' property`);
                 process.exit(1);
+            } else {
+                source = task[sourcePropertyName];
+                if (!path.isAbsolute(source)){
+                    source = path.join(lwd,source);
+                }
+
             }
-            if (!task.hasOwnProperty("target")){
-                console.error("The task ("+index+") does not have a target property");
+            if (!task.hasOwnProperty(targetPropertyName)){
+                console.error(`The task (${index}) does not have a '${targetPropertyName}' property`);
                 process.exit(1);
+            } else {
+                target = task[targetPropertyName];
+                if (!path.isAbsolute(target)){
+                    if (typeof remoteWorkingDirectory == "undefined"){
+                        console.error(`The target path (${target}) is relative, the remote working directory property (${remoteWorkingDirectory}) should then be set`)
+                        process.exit(1);
+                    }
+                    target = path.join(remoteWorkingDirectory,target);
+                }
             }
+            tasksToExecute.push({
+                sourcePropertyName: source,
+                targetPropertyName: target
+            })
         }
     }
 }
@@ -227,10 +292,8 @@ if (typeof backup == "undefined"){
  * The client
  * @type {SftpClient}
  */
-
 const client = new SftpClient('upssh');
-
-console.log("Trying to connect")
+console.log("Trying to connect to "+config.host)
 client.connect(config)
     .then(async () => {
 
@@ -240,12 +303,21 @@ client.connect(config)
          * The backup directory
          * @type {string}
          */
-        const toBackup = backup + client.remotePathSep + deploymentName + '_' + (new Date()).toISOString();
+        const toBackup = backup + this.remotePathSep + deploymentName + '_' + (new Date()).toISOString();
 
-        console.log("Move the directory ("+targetPath+") to ("+toBackup+")");
-        await client.rename(targetPath,toBackup)
-        console.log("Upload the directory ("+lwd+") to ("+targetPath+")");
-        await uploadDir(lwd, lwd, targetPath);
+        /**
+         * Executing the tasks
+         */
+        for (const [index, task] of tasksToExecute.entries()) {
+            console.log("Executing the task ("+index+")");
+
+            console.log("  * Backup: Move the directory (" + targetPath + ") to (" + toBackup + ")");
+            await client.rename(targetPath, toBackup)
+
+            console.log("  * Upload: Upload the directory (" + task[sourcePropertyName] + ") to (" + task[targetPropertyName] + ")");
+            await uploadDir(task[sourcePropertyName], task[targetPropertyName]);
+        }
+
     })
     .finally(()=> {
         client.end()

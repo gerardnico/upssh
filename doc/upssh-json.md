@@ -9,7 +9,7 @@
 {
    "name": "project",  
    "backup": "/backup/path",
-   "cwd": "/opt/www/website",
+   "rwd": "/opt/www/website",
    "tasks": [
       {
        "source": "subdir",
@@ -27,7 +27,7 @@ where:
 
   * `name` is an identifier for the deployment. It's used to create the backup directory.
   * `backup` is a remote location where all backup will be stored. This is a root directory meaning that for each deployment a child backup directory will be created
-  * `wd` is the remote working directory. If the remote `target` path is relative, this directory will be used to calculate the absolute path.
+  * `rwd` is the remote working directory. If the remote `target` path is relative, this directory will be used to calculate the absolute path.
   * `tasks` is a collection of upload task with:
     * a `source` relative path to the local working directory.
     * a `target` relative or absolute path
