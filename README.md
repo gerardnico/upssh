@@ -90,6 +90,11 @@ Disconnected
 Bye
 ```
 
-## Dev
+## Change log
 
-See [Dev](./doc/cli.md)
+  * `1.0.0` - upload of one directory only
+  * `1.0.1` - introduction of a [play](doc/upssh-json.md) to upload more than one directory.
+
+## Dev documentation
+
+See [Dev](doc/dev.md)

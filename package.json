@@ -1,6 +1,6 @@
 {
   "name": "upssh",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Deploy an application via ssh",
   "repository": "https://github.com/gerardnico/upssh",
   "author": "Nicolas GERARD",

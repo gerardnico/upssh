@@ -33,6 +33,12 @@ success Installed "upssh@1.0.0" with binaries:
 Done in 8.75s.
 ```
 
+## Publish
+
+```bash
+npm publish
+```
+
 ## Ref
 
   * [package_global](https://datacadamia.com/web/javascript/package/package_global)
