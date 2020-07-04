@@ -349,7 +349,9 @@ async function processDeployment() {
         }
         let targetExists = await client.exists(task[targetPropertyName]);
         if (!targetExists) {
-            throw new Error(`The target path ${task[targetPropertyName]} does not exist`)
+            // First time release
+            console.log(`The target path ${task[targetPropertyName]} does not exist, creating it`);
+            await client.mkdir(task[targetPropertyName],  true);
         }
     }
 
