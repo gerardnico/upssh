@@ -174,6 +174,7 @@ const targetPropertyName = "target";
 const namePropertyName = "name";
 const backupPropertyName = "backup";
 const tasksPropertyName = "tasks";
+const temporaryPropertyName = "tmp";
 const remoteWorkingDirectoryPropertyName = "rwd";
 
 /**
@@ -308,6 +309,17 @@ async function processDeployment() {
     }
 
     /**
+     * The remote temporary path
+     * @type {string}
+     */
+    const temporaryHome = '/tmp' + client.remotePathSep + deploymentName + '_' + (new Date()).toISOString();
+    let exists = await client.exists(temporaryHome);
+    if (!exists) {
+        await client.mkdir(temporaryHome, true);
+        console.log(`Temporary home directory (${temporaryHome}) created`);
+    }
+
+    /**
      * Validate the target path and
      * create the backup location
      * Absolute target path validation happens in the client
@@ -323,16 +335,17 @@ async function processDeployment() {
                 console.error(`The target path (${target}) is relative, the remote working directory property (${remoteWorkingDirectoryPropertyName}) should then be set`)
                 process.exit(1);
             }
-            let absoluteTarget = [remoteWorkingDirectory, target].join(client.remotePathSep);
-            task[targetPropertyName] = absoluteTarget;
+            task[targetPropertyName] = [remoteWorkingDirectory, target].join(client.remotePathSep);
             /**
              * If this is more than one, the backup location is relative to the backup home
              * otherwise, this is the backup location
              */
             if (tasksToExecute.length > 1) {
                 task[backupPropertyName] = [backupHome, target].join(client.remotePathSep);
+                task[temporaryPropertyName] = [temporaryHome, target].join(client.remotePathSep)
             } else {
                 task[backupPropertyName] = backupHome;
+                task[temporaryPropertyName] = temporaryHome;
             }
         } else {
             task[targetPropertyName] = target;
@@ -343,8 +356,10 @@ async function processDeployment() {
             if (tasksToExecute.length > 1) {
                 let baseName = path.basename(target)
                 task[backupPropertyName] = [backupHome, baseName].join(client.remotePathSep);
+                task[temporaryPropertyName] = [temporaryHome, target].join(client.remotePathSep)
             } else {
                 task[backupPropertyName] = backupHome;
+                task[temporaryPropertyName] = temporaryHome;
             }
         }
         let targetExists = await client.exists(task[targetPropertyName]);
@@ -368,6 +383,10 @@ async function processDeployment() {
         let sourcePath = task[sourcePropertyName];
         let targetPath = task[targetPropertyName];
         let backupPath = task[backupPropertyName];
+        let temporaryPath = task[temporaryPropertyName];
+
+        console.log("  * Upload: Upload the directory (" + sourcePath + ") to the temporary directory(" + temporaryPath + ")");
+        await uploadDir(sourcePath, temporaryPath);
 
         if (client.exists(targetPath)) {
             console.log("  * Backup: Move the directory (" + targetPath + ") to (" + backupPath + ")");
@@ -376,8 +395,9 @@ async function processDeployment() {
             console.log("  * Backup: The target directory (" + targetPath + ") does not exist and was not moved");
         }
 
-        console.log("  * Upload: Upload the directory (" + sourcePath + ") to (" + targetPath + ")");
-        await uploadDir(sourcePath, targetPath);
+        console.log("  * Move the temporary directory (" + temporaryPath + ") to the target directory (" + targetPath + ")");
+        await client.rename(temporaryPath, targetPath);
+
     }
 
     await client.end();
