@@ -94,6 +94,7 @@ Bye
 
   * `1.0.0` - upload of one directory only
   * `1.0.1` - introduction of a [play](doc/upssh-json.md) to upload more than one directory.
+  * `1.0.2` - the data is uploaded to a temporary directory, and the directory switch happens at the end
 
 ## Dev documentation
 
